@@ -72,19 +72,19 @@ async def generar_docx(file: UploadFile = File(...)):
     doc.render(doc_data.model_dump())
 
     # Guardar en memoria
-    #output = io.BytesIO()
-    #doc.save(output)
-    doc.save(doc_data.archivo)
-    #output.seek(0)
+    output = io.BytesIO()
+    doc.save(output)
+    #doc.save(doc_data.archivo)
+    output.seek(0)
 
     # Nombre del archivo de salida
     nombre_salida = doc_data.archivo.replace(".docx", "_generado.docx")
 
-    #return StreamingResponse(
-    #    output,
-    #    media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    #    headers={"Content-Disposition": f"attachment; filename={doc_data.archivo}"},
-    #)
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment; filename={doc_data.archivo}"},
+    )
 
 
 @app.get("/")
