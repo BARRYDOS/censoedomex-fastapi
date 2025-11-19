@@ -1,0 +1,20 @@
+{
+  "redirects": [
+    {
+      "source": "/generar-docx",
+      "destination": "/generar-docx/",
+      "permanent": false
+    }
+  ],
+  "headers": [
+    {
+      "source": "/generar-docx/",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "https://censoedomex.maxapex.net" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+        { "key": "Access-Control-Allow-Credentials", "value": "true" }
+      ]
+    }
+  ]
+}
