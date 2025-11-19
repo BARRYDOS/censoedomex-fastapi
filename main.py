@@ -1,4 +1,6 @@
 # main.py
+
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -9,6 +11,14 @@ import io
 import os
 
 app = FastAPI(title="Catastro → DOCX", version="1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://censoedomex.maxapex.net"],   # ← tu APEX
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # === Modelos Pydantic (mismos que antes) ===
 class Terreno(BaseModel):
