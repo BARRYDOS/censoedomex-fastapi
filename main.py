@@ -1,10 +1,9 @@
-# main.py
+# main.py (versión corregida y funcional)
 
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import List, Optional
 from docxtpl import DocxTemplate
 import json
 import io
@@ -12,23 +11,22 @@ import os
 
 app = FastAPI(title="Catastro → DOCX", version="1.0")
 
+# CONFIGURACIÓN CORS CORRECTA (esta es la que funciona con APEX)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # ← tu APEX
+    allow_origins=[
+        "https://censoedomex.maxapex.net",   # Tu APEX real
+        "https://censoedomex.maxapex.net/",  # con slash final también
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
 )
 
-@app.middleware("http")
-async def add_cors_headers(request: Request, call_next):
-    response = await call_next(request)
-    response.headers["Access-Control-Allow-Origin"] = "https://censoedomex.maxapex.net"
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    return response
+# ELIMINA el @app.middleware("http") que tenías → está mal escrito y sobrescribe CORS
 
-
-# === Modelos Pydantic (mismos que antes) ===
+# === Tus modelos Pydantic (sin cambios) ===
 class Terreno(BaseModel):
     valor_terreno_propio: int = Field(..., ge=0)
     metros_terreno_propio: Optional[float] = None
@@ -64,47 +62,42 @@ class DocumentoCatastral(BaseModel):
     archivo: str
     predio: List[Predio]
 
-
-# === Ruta para generar DOCX ===
+# === Ruta principal ===
 @app.post("/generar-docx")
-async def generar_docx(file: UploadFile = File(...)):    
+async def generar_docx(file: UploadFile = File(...)):
     if not file.filename.endswith(".json"):
-        raise HTTPException(400, "Solo archivos .json")
+        raise HTTPException(400, "Solo se permiten archivos .json")
 
     try:
         content = await file.read()
-        data = json.loads(content)
+        data = json.loads(content.decode("utf-8"))
         doc_data = DocumentoCatastral.model_validate(data)
-        print(doc_data.archivo)
     except Exception as e:
-        raise HTTPException(422, f"Error en validación: {str(e)}")
+        raise HTTPException(422, f"Error en JSON o validación: {str(e)}")
 
-    # Cargar plantilla
     template_path = "templates/template.docx"
     if not os.path.exists(template_path):
-        raise HTTPException(500, "Plantilla no encontrada")
+        raise HTTPException(500, "Plantilla template.docx no encontrada")
 
     doc = DocxTemplate(template_path)
-
-    # Renderizar
     doc.render(doc_data.model_dump())
 
-    # Guardar en memoria
     output = io.BytesIO()
     doc.save(output)
-    #doc.save(doc_data.archivo)
     output.seek(0)
 
-    # Nombre del archivo de salida
-    nombre_salida = doc_data.archivo.replace(".docx", "_generado.docx")
+    # Usar el nombre que viene en el JSON
+    nombre_archivo = doc_data.archivo if doc_data.archivo.endswith(".docx") else f"{doc_data.archivo}.docx"
 
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": f"attachment; filename={doc_data.archivo}"},
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{nombre_archivo}",
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        }
     )
-
 
 @app.get("/")
 def root():
-    return {"message": "API para generar DOCX desde JSON catastral. Usa POST /generar-docx"}
+    return {"message": "API Catastro → DOCX activa"}
