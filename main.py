@@ -14,11 +14,19 @@ app = FastAPI(title="Catastro → DOCX", version="1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://censoedomex.maxapex.net"],   # ← tu APEX
+    allow_origins=["*"],   # ← tu APEX
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def add_cors_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "https://censoedomex.maxapex.net"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
+
 
 # === Modelos Pydantic (mismos que antes) ===
 class Terreno(BaseModel):
